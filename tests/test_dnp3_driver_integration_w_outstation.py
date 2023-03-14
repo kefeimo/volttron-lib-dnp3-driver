@@ -1,3 +1,4 @@
+"""dnp3 driver integration test with outstation"""
 import pytest
 import gevent
 import logging
@@ -418,18 +419,18 @@ class TestDNP3RegisterControlWorkflow:
         # master set values
         for i, (val_set, csv_row) in enumerate(zip(output_val, reg_defs)):
             dnp3_register = Dnp3Register(master_application=master_app,
-                                         reg_def=csv_row,
+                                         reg_definition=csv_row,
                                          **dnp3_inherit_init_args
                                          )
-            dnp3_register.set_register_value(value=val_set)
+            dnp3_register.value = val_set
 
         # verify: driver read value
         for i, (val_set, csv_row) in enumerate(zip(output_val, reg_defs)):
             # print(f"====== reg_defs {reg_defs}, analog_input_val {analog_input_val}")
             dnp3_register = Dnp3Register(master_application=master_app,
-                                         reg_def=csv_row,
+                                         reg_definition=csv_row,
                                          **dnp3_inherit_init_args
                                          )
-            val_get = dnp3_register.get_register_value()
+            val_get = dnp3_register.value
             # print("===========val_get, val_update", val_get, val_update)
             assert val_get == val_set

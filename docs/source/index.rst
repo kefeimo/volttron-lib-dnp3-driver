@@ -7,13 +7,11 @@ DNP3 Driver
 VOLTTRON's DNP3 driver enables the use of `DNP3 <https://en.wikipedia.org/wiki/DNP3>`_ (Distributed Network Protocol)
 communications, reading and writing points via a DNP3 Outstation.
 
-In order to use a DNP3 driver to read and write point data, a server component (i.e., Outstation) must also
-be configured and running.
-
 Requirements
 ============
 
-The DNP3 driver requires the `dnp3-python <https://github.com/VOLTTRON/dnp3-python>`_ package, a wrapper on Pydnp3 package.
+The DNP3 driver requires the `dnp3-python <https://github.com/VOLTTRON/dnp3-python>`_ package, a DNP3 Python
+implementation wrapping on the `opendnp3<https://github.com/dnp3/opendnp3>`_ package.
 This package can be installed in an activated environment with:
 
 .. code-block:: bash
@@ -24,7 +22,15 @@ This package can be installed in an activated environment with:
 Driver Configuration
 ====================
 
-There is one argument for the "driver_config" section of the DNP3 driver configuration file:
+The DNP3 driver configuration file follows `Driver Configuration File <https://volttron.readthedocs.io/en/main/agent-framework/driver-framework/platform-driver/platform-driver.html?highlight=driver_config#driver-configuration-file>`_ convention.
+Within the DNP3 driver configuration file, the "driver_config" argument is a key-value dictionary used to initialized
+a DNP3 outstation object class:
+    * master_ip: master station (driver) ip address
+    * outstation_ip: outstation (dnp3-agent) ip address
+    * master_id: master station ID
+    * outstation_id: outstation ID
+    * port: port number
+(For more details about DNP3 outstation object clas, please see `MyOutStationNew <https://github.com/VOLTTRON/dnp3-python/blob/main/src/dnp3_python/dnp3station/outstation_new.py#L35>`_.)
 
 Here is a sample DNP3 driver configuration file:
 
@@ -54,21 +60,30 @@ in `example-config/dnp3.config
 DNP3 Registry Configuration File
 ================================
 
-The driver's registry configuration file, a `CSV <https://en.wikipedia.org/wiki/Comma-separated_values>`_ file,
-specifies which DNP3 points the driver will read and/or write. Each row configures a single DNP3 point.
+The driver's registry configuration can be a CSV file with one row for each point or a JSON file structured as a list
+of objects (one object for each point). Either the columns (CSV) or keys (JSON) are required for each point.
 
-The following columns are required for each row:
+As a reminder, When a DNP3 outstation transmits a message containing response data, the message identifies the group number and variation
+of every value within the message. Group and variation numbers are also assigned for counters, binary inputs, controls and
+analog outputs. In fact, all valid data types and formats in DNP3 are identified by group and variation numbers. Defining the
+allowable groups and variations helps DNP3 assure interoperability between devices. DNP3's basic documentation (i.e., `dnp3.Variation
+<https://docs.stepfunc.io/dnp3/0.9.0/dotnet/namespacednp3.html#a467a3b6f7d543e90374b39c8088cadfbaff335165a793b52dafbd928a8864f607>`_) contains a
+library of valid groups and their variations.
+
+In addition, when data from an index is transmitted across the wire, the sender must suitably encode the information to enable a receiving
+device to parse and properly interpret this data. The bits and bytes for each index appearing in the message are called an object.
+That is, objects in the message are the encoded representation of the data from a point, or other structure, and the object format
+depends upon which group and variation number are chosen
+
+Point definitions in the DNP3 driver’s registry (shown as CSV) should look similar to the following:
 
     - **Volttron Point Name** - The name used by the VOLTTRON platform and agents to refer to the point.
     - **Group** - The point's DNP3 group number.
-    - **Variation** - THe permit negotiated exchange of data formatted, i.e., data type.
+    - **Variation** - The permit negotiated exchange of data formatted, i.e., data type.
     - **Index** - The point's index number within its DNP3 data type (which is derived from its DNP3 group number).
     - **Scaling** - A factor by which to multiply point values.
     - **Units** - Point value units.
     - **Writable** - TRUE or FALSE, indicating whether the point can be written by the driver (FALSE = read-only).
-
-Consult the **DNP3 data dictionary** for a point's Group and Index values. Point
-definitions in the data dictionary are by agreement between the DNP3 Outstation and Master.
 
 Point definitions in the DNP3 driver's registry should look similar as following:
 

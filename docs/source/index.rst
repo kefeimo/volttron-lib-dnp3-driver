@@ -5,14 +5,14 @@ DNP3 Driver
 ===========
 
 VOLTTRON's DNP3 driver enables the use of `DNP3 <https://en.wikipedia.org/wiki/DNP3>`_ (Distributed Network Protocol)
-communications, reading and writing points via a DNP3 Outstation.
+communications as a DNP3 master, reading and writing points to a remote server (DNP3 Outstation).
 
 Requirements
 ============
 
-The DNP3 driver requires the `dnp3-python <https://github.com/VOLTTRON/dnp3-python>`_ package, a DNP3 Python
-implementation wrapping on the `opendnp3<https://github.com/dnp3/opendnp3>`_ package.
-This package can be installed in an activated environment with:
+The DNP3 driver requires the `dnp3-python <https://github.com/VOLTTRON/dnp3-python>`_ library, a DNP3 Python
+implementation wrapping the `opendnp3 <https://github.com/dnp3/opendnp3>`_ library.
+This library can be installed in an activated environment with:
 
 .. code-block:: bash
 
@@ -23,14 +23,13 @@ Driver Configuration
 ====================
 
 The DNP3 driver configuration file follows `Driver Configuration File <https://volttron.readthedocs.io/en/main/agent-framework/driver-framework/platform-driver/platform-driver.html?highlight=driver_config#driver-configuration-file>`_ convention.
-Within the DNP3 driver configuration file, the "driver_config" argument is a key-value dictionary used to initialized
-a DNP3 outstation object class:
-    * master_ip: master station (driver) ip address
-    * outstation_ip: outstation (dnp3-agent) ip address
-    * master_id: master station ID
-    * outstation_id: outstation ID
-    * port: port number
-(For more details about DNP3 outstation object clas, please see `MyOutStationNew <https://github.com/VOLTTRON/dnp3-python/blob/main/src/dnp3_python/dnp3station/outstation_new.py#L35>`_.)
+Within the DNP3 driver configuration file, the "driver_config" argument is a key-value dictionary used to establish
+communication with a DNP3 outstation:
+    - **master_ip** - master_ip: master station (driver host) ip address
+    - **outstation_ip** - outstation (remote host) ip address
+    - **master_id** - master station ID
+    - **outstation_id** - outstation ID
+    - **port** - port number
 
 Here is a sample DNP3 driver configuration file:
 
@@ -52,35 +51,26 @@ Here is a sample DNP3 driver configuration file:
       "heart_beat_point": "random_bool"
     }
 
-A sample DNP3 driver configuration file can be found in the VOLTTRON repository
-in `example-config/dnp3.config
-<https://github.com/eclipse-volttron/volttron-lib-dnp3-driver/blob/main/example-config/dnp3.config>`_.
+A sample DNP3 driver configuration file can be found `here <https://github.com/eclipse-volttron/volttron-lib-dnp3-driver/blob/main/example-config/dnp3.config>`_.
 
 
 DNP3 Registry Configuration File
 ================================
 
-The driver's registry configuration can be a CSV file with one row for each point or a JSON file structured as a list
-of objects (one object for each point). Either the columns (CSV) or keys (JSON) are required for each point.
+All valid data types and formats in DNP3 are identified by group and variation numbers. When a DNP3 outstation
+transmits a message containing response data, the message identifies the group number and variation of every value within
+the message. The group-variation pair numbers provide sufficient information for the receiver to parse and
+properly interpret the data. DNP3’s basic documentation contains a `table <https://docs.stepfunc.io/dnp3/0.9.0/dotnet/namespacednp3.html#a467a3b6f7d543e90374b39c8088cadfbaff335165a793b52dafbd928a8864f607>`_
+of valid groups and their variations.
 
-As a reminder, When a DNP3 outstation transmits a message containing response data, the message identifies the group number and variation
-of every value within the message. Group and variation numbers are also assigned for counters, binary inputs, controls and
-analog outputs. In fact, all valid data types and formats in DNP3 are identified by group and variation numbers. Defining the
-allowable groups and variations helps DNP3 assure interoperability between devices. DNP3's basic documentation (i.e., `dnp3.Variation
-<https://docs.stepfunc.io/dnp3/0.9.0/dotnet/namespacednp3.html#a467a3b6f7d543e90374b39c8088cadfbaff335165a793b52dafbd928a8864f607>`_) contains a
-library of valid groups and their variations.
-
-In addition, when data from an index is transmitted across the wire, the sender must suitably encode the information to enable a receiving
-device to parse and properly interpret this data. The bits and bytes for each index appearing in the message are called an object.
-That is, objects in the message are the encoded representation of the data from a point, or other structure, and the object format
-depends upon which group and variation number are chosen
-
-Point definitions in the DNP3 driver’s registry (shown as CSV) should look similar to the following:
+The driver's registry configuration file specifies information related to each point on the device, in a CSV or JSON file.
+More detailed information of driver registry files may be found `here <https://volttron.readthedocs.io/en/main/agent-framework/driver-framework/platform-driver/platform-driver.html?highlight=driver_config#driver-configuration-file>`_.
+The driver’s registry configuration must contain the following items for each point:
 
     - **Volttron Point Name** - The name used by the VOLTTRON platform and agents to refer to the point.
     - **Group** - The point's DNP3 group number.
-    - **Variation** - The permit negotiated exchange of data formatted, i.e., data type.
-    - **Index** - The point's index number within its DNP3 data type (which is derived from its DNP3 group number).
+    - **Variation** - The point's DNP3 Variation number.
+    - **Index** - The point's index number within its DNP3 data type.
     - **Scaling** - A factor by which to multiply point values.
     - **Units** - Point value units.
     - **Writable** - TRUE or FALSE, indicating whether the point can be written by the driver (FALSE = read-only).
@@ -97,8 +87,6 @@ Point definitions in the DNP3 driver's registry should look similar as following
 
 
 A sample DNP3 driver registry configuration file is available
-in `example-config/dnp3.csv
-<https://github.com/eclipse-volttron/volttron-lib-dnp3-driver/blob/main/example-config/dnp3.csv>`_.
+in `dnp3.csv <https://github.com/eclipse-volttron/volttron-lib-dnp3-driver/blob/main/example-config/dnp3.csv>`_.
 
-For more information about Group Variation definition, please refer to `dnp3.Variation
-<https://docs.stepfunc.io/dnp3/0.9.0/dotnet/namespacednp3.html#a467a3b6f7d543e90374b39c8088cadfbaff335165a793b52dafbd928a8864f607>`_.
+For more information about Group Variation definition, please refer to `dnp3.Variation <https://docs.stepfunc.io/dnp3/0.9.0/dotnet/namespacednp3.html#a467a3b6f7d543e90374b39c8088cadfbaff335165a793b52dafbd928a8864f607>`_.

@@ -26,7 +26,7 @@
 
 # -- Project information
 
-project = 'VOLTTRON DNP3 Driver'
+project = 'VOLTTRON Modbus Driver'
 copyright = '2022, Pacific Northwest National Lab'
 author = 'Pacific Northwest National Lab'
 

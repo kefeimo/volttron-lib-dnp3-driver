@@ -22,9 +22,10 @@ This library can be installed in an activated environment with:
 Driver Configuration
 ====================
 
-The DNP3 driver configuration file follows `Driver Configuration File <https://volttron.readthedocs.io/en/main/agent-framework/driver-framework/platform-driver/platform-driver.html?highlight=driver_config#driver-configuration-file>`_ convention.
+The DNP3 driver configuration file follows :ref:`Device Configuration File <Device-Configuration-File>` convention.
 Within the DNP3 driver configuration file, the "driver_config" argument is a key-value dictionary used to establish
 communication with a DNP3 outstation:
+
     - **master_ip** - master_ip: master station (driver host) ip address
     - **outstation_ip** - outstation (remote host) ip address
     - **master_id** - master station ID
@@ -64,12 +65,12 @@ properly interpret the data. DNP3’s basic documentation contains a `table <htt
 of valid groups and their variations.
 
 The driver's registry configuration file specifies information related to each point on the device, in a CSV or JSON file.
-More detailed information of driver registry files may be found `here <https://volttron.readthedocs.io/en/main/agent-framework/driver-framework/platform-driver/platform-driver.html?highlight=driver_config#driver-configuration-file>`_.
+More detailed information of driver registry files may be found :ref:`here <Registry-Configuration-File>`.
 The driver’s registry configuration must contain the following items for each point:
 
     - **Volttron Point Name** - The name used by the VOLTTRON platform and agents to refer to the point.
     - **Group** - The point's DNP3 group number.
-    - **Variation** - The point's DNP3 Variation number.
+    - **Variation** - The point's DNP3 variation number.
     - **Index** - The point's index number within its DNP3 data type.
     - **Scaling** - A factor by which to multiply point values.
     - **Units** - Point value units.

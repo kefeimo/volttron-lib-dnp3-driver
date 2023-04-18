@@ -12,18 +12,8 @@ import pathlib
 import gevent
 import pytest
 import os
-from volttron.client.vip.agent import build_agent
-from time import sleep
-import datetime
-from dnp3_python.dnp3station.outstation_new import MyOutStationNew
-import random
-import subprocess
-from volttron.utils import is_volttron_running
-import json
-# from utils.testing_utils import *
-from volttrontesting.fixtures.volttron_platform_fixtures import volttron_instance
+
 from volttron.client.known_identities import CONFIGURATION_STORE, PLATFORM_DRIVER
-import json
 from volttron.utils import jsonapi
 
 import logging
@@ -32,21 +22,6 @@ logging_logger = logging.getLogger(__name__)
 
 dnp3_vip_identity = "dnp3_outstation"
 platform_driver_id = PLATFORM_DRIVER
-
-
-# @pytest.fixture(scope="module")
-# def volttron_home():
-#     """
-#     VOLTTRON_HOME environment variable suggested to setup at pytest.ini [env]
-#     """
-#     volttron_home: str = os.getenv("VOLTTRON_HOME")
-#     assert volttron_home
-#     return volttron_home
-#
-#
-# def test_volttron_home_fixture(volttron_home):
-#     assert volttron_home
-#     print(volttron_home)
 
 
 def test_testing_file_path():
@@ -170,8 +145,9 @@ def configure_platform_driver(install_platform_driver, vip_agent, volttron_insta
         "timezone": "UTC",
         "heart_beat_point": "random_bool"
     }
+    gevent.sleep(2)
     # Note: vctl config store <platform_driver_id> <config-name> <config-content-path> --json
-    config_name = "devices/campus/building/dnp3"
+    config_name = "devices/campus/building/dnp3"  # Note: the config_name has format devices/<path>
     config_content = driver_config
     vip_agent.vip.rpc.call(CONFIGURATION_STORE,
                            "manage_store",
@@ -179,8 +155,8 @@ def configure_platform_driver(install_platform_driver, vip_agent, volttron_insta
                            config_name,
                            jsonapi.dumps(config_content),  # Note: need to use jsonapi.dump, not json.dump
                            config_type='json')
-
-    gevent.sleep(10)
+    gevent.sleep(2)
+    # TODO: added retry_call, i.e., flexible retry and sleep here.
     pid = volttron_instance.start_agent(uuid)
     return pid
 
@@ -189,11 +165,11 @@ def test_configure_platform_driver_fixture(configure_platform_driver, install_pl
                                            volttron_instance):
     uuid = install_platform_driver
     pid = configure_platform_driver
-    logging_logger.info(f"=========== dnp3_outstation_agent ids: {uuid}")
+    logging_logger.info(f"=========== uuid: {uuid}")
     logging_logger.info(f"=========== volttron_instance_new.is_agent_running(puid): "
                         f"{volttron_instance.is_agent_running(uuid)}")
     logging_logger.info(f"=========== vip_agent.vip.peerlist().get(): {vip_agent.vip.peerlist().get()}")
-    logging_logger.info(f"=========== platform_driver_id: {platform_driver_id}")
+    logging_logger.info(f"=========== pid: {pid}")
 
     res = vip_agent.vip.rpc.call(CONFIGURATION_STORE, "manage_list_stores").get(5)
     logging_logger.info(f"=========== manage_list_stores {res}")
@@ -202,22 +178,20 @@ def test_configure_platform_driver_fixture(configure_platform_driver, install_pl
     logging_logger.info(f"=========== manage_list_configs {res}")
 
 
-def test_scrape_all(vip_agent, configure_platform_driver):
-    res = vip_agent.vip.rpc.call(PLATFORM_DRIVER, "scrape_all",
+def test_scrape_all_dry(vip_agent, configure_platform_driver):
+    res = vip_agent.vip.rpc.call(platform_driver_id, "scrape_all",
                                  "campus/building/dnp3").get(timeout=10)
     logging_logger.info(f"=========== scrape_all {res}")
+    # expected res == {'AnalogInput_index0': None, 'AnalogInput_index1': None, 'AnalogInput_index2': None,
+    #                'AnalogInput_index3': None, 'BinaryInput_index0': None, 'BinaryInput_index1': None,
+    #                'BinaryInput_index2': None, 'BinaryInput_index3': None, 'AnalogOutput_index0': None,
+    #                'AnalogOutput_index1': None, 'AnalogOutput_index2': None, 'AnalogOutput_index3': None,
+    #                'BinaryOutput_index0': None, 'BinaryOutput_index1': None, 'BinaryOutput_index2': None,
+    #                'BinaryOutput_index3': None}
 
-from volttron.client.vip.agent import build_agent
 
+def test_get_point_dry(vip_agent, configure_platform_driver):
+    res = vip_agent.vip.rpc.call(platform_driver_id, "get_point",
+                                 "campus/building/dnp3", "AnalogInput_index0").get(timeout=10)
+    logging_logger.info(f"=========== get_point {res}")  # expected None
 
-def test_sandbox():
-    a = build_agent()
-    print(a)
-
-    res = a.vip.rpc.call(CONFIGURATION_STORE,
-                         "manage_get", "platform_driver_for_dnp3", "devices/campus/building/dnp3").get(5)
-    logging_logger.info(f"=========== a.vip.rpc.call(CONFIGURATION_STORE, manage_store, {res}")
-
-    res = a.vip.rpc.call(PLATFORM_DRIVER, "scrape_all",
-                                 "devices/campus/building/dnp3").get(timeout=10)
-    logging_logger.info(f"=========== scrape_all, {res}")

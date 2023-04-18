@@ -250,7 +250,7 @@ class TestDNPRegister:
         # outstation update values
         for i, val_update in enumerate(analog_input_val):
             outstation_app.apply_update(opendnp3.Analog(value=val_update), index=i)
-            # time.sleep(1)
+            time.sleep(1)
 
         # verify: driver read value
         for i, (val_update, reg_def) in enumerate(zip(analog_input_val, reg_defs)):

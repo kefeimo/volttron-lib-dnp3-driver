@@ -46,6 +46,7 @@ Register = TypeVar("Register", bound=BaseRegister)
 
 
 class Dnp3Register(BaseRegister):
+    # TODO: developed more robust logic when not connecting with an outstation.
 
     def __init__(self, read_only, pointName, units, reg_type, default_value=None, description='',
                  reg_definition=None, master_application=None):

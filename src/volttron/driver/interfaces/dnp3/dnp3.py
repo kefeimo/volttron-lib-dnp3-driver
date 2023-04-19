@@ -59,7 +59,7 @@ class Dnp3Register(BaseRegister):
         self.reg_type = reg_type
         self.pointName = pointName
 
-        self.value = None
+        self._value = None
         self.group = int(reg_definition.get("Group"))
         self.variation = int(reg_definition.get("Variation"))
         self.index = int(reg_definition.get("Index"))
@@ -77,9 +77,10 @@ class Dnp3Register(BaseRegister):
                 _log.warning(f"Register value for pointName {self.pointName} is None.")
                 # raise ValueError(f"Register value for pointName {self.pointName} is None. Hence not publish.")
                 # TODO: figure out an elegant way to not publish None values.
-            return value
+            self._value = value
+            return self._value
         except Exception as e:
-            _log.error(e)
+            _log.exception(e)
             _log.warning("udd_dnp3 driver (master) couldn't get value from the outstation.")
 
     @staticmethod
@@ -103,8 +104,9 @@ class Dnp3Register(BaseRegister):
                                     variation=self.variation,
                                     index=self.index,
                                     set_value=_val)
+            self._value = _val
         except Exception as e:
-            _log.error(e)
+            _log.exception(e)
             _log.warning("udd_dnp3 driver (master) couldn't set value for the outstation.")
 
     @staticmethod

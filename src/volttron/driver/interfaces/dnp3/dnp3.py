@@ -80,7 +80,7 @@ class Dnp3Register(BaseRegister):
             self._value = value
             return self._value
         except Exception as e:
-            _log.exception(e)
+            _log.exception(e, stack_info=True)
             _log.warning("udd_dnp3 driver (master) couldn't get value from the outstation.")
 
     @staticmethod
@@ -106,7 +106,7 @@ class Dnp3Register(BaseRegister):
                                     set_value=_val)
             self._value = _val
         except Exception as e:
-            _log.exception(e)
+            _log.exception(e, stack_info=True)
             _log.warning("udd_dnp3 driver (master) couldn't set value for the outstation.")
 
     @staticmethod

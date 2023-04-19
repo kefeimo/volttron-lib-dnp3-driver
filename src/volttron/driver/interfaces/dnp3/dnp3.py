@@ -153,11 +153,12 @@ class Dnp3Driver(BasicRevert, BaseInterface):
     def _set_point(self, point_name, value: RegisterValue):
         register: Dnp3Register = self.get_register_by_name(point_name)
         if register.read_only:
-            raise RuntimeError("Trying to write to a point configured read only: " + point_name)
+            raise ValueError("Trying to write to a point configured read only: " + point_name)
         # register.value = register.reg_type(value)  # old logic to cast value to reg_type value (not robust)
         register.value = value
         # Note: simple retry logic
-        retry_max = 10
+        # TODO: make retry attempt configurable
+        retry_max = 3
         for n in range(retry_max):
             if register.value == value:
                 return register.value

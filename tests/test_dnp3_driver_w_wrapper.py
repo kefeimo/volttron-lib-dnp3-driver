@@ -15,6 +15,7 @@ import os
 
 from volttron.client.known_identities import CONFIGURATION_STORE, PLATFORM_DRIVER
 from volttron.utils import jsonapi
+from dnp3_python.dnp3station.outstation_new import MyOutStationNew
 
 import logging
 
@@ -161,6 +162,9 @@ def configure_platform_driver(install_platform_driver, vip_agent, volttron_insta
     return pid
 
 
+# TODO: added try except "<gevent-timeout-except>" for the following rpc get calls.
+
+
 def test_configure_platform_driver_fixture(configure_platform_driver, install_platform_driver, vip_agent,
                                            volttron_instance):
     uuid = install_platform_driver
@@ -178,7 +182,10 @@ def test_configure_platform_driver_fixture(configure_platform_driver, install_pl
     logging_logger.info(f"=========== manage_list_configs {res}")
 
 
-def test_scrape_all_dry(vip_agent, configure_platform_driver):
+def test_scrape_all_dryrun(vip_agent, configure_platform_driver):
+    """
+    rpc call to "scrape_all" WITHOUT establishing connection to an outstation, no validation
+    """
     res = vip_agent.vip.rpc.call(platform_driver_id, "scrape_all",
                                  "campus/building/dnp3").get(timeout=10)
     logging_logger.info(f"=========== scrape_all {res}")
@@ -190,8 +197,51 @@ def test_scrape_all_dry(vip_agent, configure_platform_driver):
     #                'BinaryOutput_index3': None}
 
 
-def test_get_point_dry(vip_agent, configure_platform_driver):
+def test_get_point_dryrun(vip_agent, configure_platform_driver):
+    """
+        rpc call to "get_point" WITHOUT establishing connection to an outstation, no validation
+        """
     res = vip_agent.vip.rpc.call(platform_driver_id, "get_point",
                                  "campus/building/dnp3", "AnalogInput_index0").get(timeout=10)
     logging_logger.info(f"=========== get_point {res}")  # expected None
 
+
+def test_set_point_dryrun(vip_agent, configure_platform_driver):
+    """
+        rpc call to "set_point" WITH establishing connection to an outstation, no validation
+        """
+    res = vip_agent.vip.rpc.call(platform_driver_id, "set_point",
+                                 "campus/building/dnp3", "AnalogOutput_index0", 0.1234).get(timeout=20)
+    logging_logger.info(f"=========== set_point {res}")  # expected None
+
+
+@pytest.fixture(
+    scope="module"
+)
+def outstation_app(request):
+    """
+    outstation using default configuration (including default database)
+    Note: since outstation cannot shut down gracefully,
+    outstation_app fixture need to in "module" scope to prevent interrupting pytest during outstation shut-down
+    """
+    # Note: allow parsing argument to fixture change port number using `request.param`
+    # Note: verified that there is no port conflict during Github Action multi python version test, {{ matrix.python }}
+    try:
+        port = request.param
+    except AttributeError:
+        port = 30000
+    outstation_appl = MyOutStationNew(port=port)  # Note: using default port 20000
+    outstation_appl.start()
+    # time.sleep(3)
+    yield outstation_appl
+    # clean-up
+    outstation_appl.shutdown()
+
+
+def test_set_point_dryrun_w_outstation(vip_agent, configure_platform_driver, outstation_app):
+    """
+        rpc call to "set_point" WITH establishing connection to an outstation, no validation
+        """
+    res = vip_agent.vip.rpc.call(platform_driver_id, "set_point",
+                                 "campus/building/dnp3", "AnalogOutput_index0", 0.1234).get(timeout=20)
+    logging_logger.info(f"=========== set_point {res}")  # expected 0.1234

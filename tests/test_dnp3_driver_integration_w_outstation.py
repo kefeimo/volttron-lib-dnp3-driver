@@ -78,6 +78,14 @@ def master_app(request):
     time.sleep(1)
 
 
+@pytest.mark.parametrize('master_app', [20002, 20003], indirect=['master_app'])
+def test_master_appl_fixture(master_app):
+    master: MyMasterNew = master_app
+    logging.info(f"============ master.port {master.get_config()}")
+
+
+
+
 class TestStation:
     """
     Testing the underlying pydnp3 package station-related fuctions.

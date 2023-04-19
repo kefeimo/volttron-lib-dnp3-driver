@@ -27,6 +27,7 @@ jobs:
   run-tests:
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-22.04]
         python: ['3.10', '3.11']

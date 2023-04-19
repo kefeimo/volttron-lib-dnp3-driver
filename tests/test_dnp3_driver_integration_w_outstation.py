@@ -13,6 +13,7 @@ from pydnp3 import opendnp3
 
 from dnp3_python.dnp3station.master_new import MyMasterNew
 from dnp3_python.dnp3station.outstation_new import MyOutStationNew
+PORT = 40000
 
 import os
 
@@ -42,7 +43,7 @@ def outstation_app(request):
     try:
         port = request.param
     except AttributeError:
-        port = 20000
+        port = 30000
     outstation_appl = MyOutStationNew(port=port)  # Note: using default port 20000
     outstation_appl.start()
     # time.sleep(3)
@@ -64,7 +65,7 @@ def master_app(request):
     try:
         port = request.param
     except AttributeError:
-        port = 20000
+        port = 30000
     # Note: using default port 20000,
     # Note: using small "stale_if_longer_than" to force update
     master_appl = MyMasterNew(port=port, stale_if_longer_than=0.1)
@@ -78,14 +79,14 @@ def master_app(request):
     time.sleep(1)
 
 
-@pytest.mark.parametrize('master_app', [20002, 20003], indirect=['master_app'])
+@pytest.mark.parametrize('master_app', [40002, 40003], indirect=['master_app'])
 def test_master_appl_fixture(master_app):
     master: MyMasterNew = master_app
     logging.info(f"============ master.port {master.get_config()}")
 
 
-
-
+@pytest.mark.parametrize('outstation_app', [PORT], indirect=['outstation_app'])
+@pytest.mark.parametrize('master_app', [PORT], indirect=['master_app'])
 class TestStation:
     """
     Testing the underlying pydnp3 package station-related fuctions.
@@ -158,7 +159,7 @@ class TestStation:
 @pytest.fixture
 def dnp3_inherit_init_args(csv_config, driver_config_in_json_config):
     """
-    args required for parent class init (i.e., class WrapperRegister)
+    args required for parent class init (i.e., class WrapperRegister)f
     """
     # args = {'driver_config': driver_config_in_json_config,
     #         'point_name': "",
@@ -214,6 +215,8 @@ def reg_def_dummy():
     return reg_def
 
 
+@pytest.mark.parametrize('outstation_app', [PORT], indirect=['outstation_app'])
+@pytest.mark.parametrize('master_app', [PORT], indirect=['master_app'])
 class TestDNPRegister:
     """
     Tests for UserDevelopRegisterDnp3 class
@@ -226,7 +229,7 @@ class TestDNPRegister:
         binary input
     """
 
-    def test_init(self, master_app, csv_config, dnp3_inherit_init_args):
+    def test_init(self, outstation_app, master_app, csv_config, dnp3_inherit_init_args):
         for reg_def in csv_config:
             # Dnp3Register(read_only=False, pointName="pointName", units="units", reg_type="reg_type", default_value=None,
             #              description='',
@@ -334,6 +337,8 @@ class TestDNPRegister:
             assert val_get == val_update
 
 
+@pytest.mark.parametrize('outstation_app', [PORT], indirect=['outstation_app'])
+@pytest.mark.parametrize('master_app', [PORT], indirect=['master_app'])
 class TestDNP3RegisterControlWorkflow:
 
     def test_set_register_value_analog_float(self, outstation_app, master_app, csv_config,

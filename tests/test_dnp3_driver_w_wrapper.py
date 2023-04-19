@@ -8,6 +8,7 @@ Note: several fixtures are used
     dnp3_outstation_agent
 """
 import pathlib
+import random
 
 import gevent
 import pytest
@@ -16,6 +17,7 @@ import os
 from volttron.client.known_identities import CONFIGURATION_STORE, PLATFORM_DRIVER
 from volttron.utils import jsonapi
 from dnp3_python.dnp3station.outstation_new import MyOutStationNew
+from pydnp3 import opendnp3
 
 import logging
 
@@ -23,13 +25,10 @@ logging_logger = logging.getLogger(__name__)
 
 dnp3_vip_identity = "dnp3_outstation"
 platform_driver_id = PLATFORM_DRIVER
+PORT = 30000
 
 
-def test_testing_file_path():
-    parent_path = os.getcwd()
-    dnp3_agent_config_path = os.path.join(parent_path, "dnp3-outstation-config.json")
-    # print(dnp3_agent_config_path)
-    logging_logger.info(f"test_testing_file_path {dnp3_agent_config_path}")
+# class TestFixtures:
 
 
 def test_volttron_instance_fixture(volttron_instance):
@@ -139,10 +138,10 @@ def configure_platform_driver(install_platform_driver, vip_agent, volttron_insta
     driver_config = {
         "driver_config": {"master_ip": "0.0.0.0", "outstation_ip": "127.0.0.1",
                           "master_id": 2, "outstation_id": 1,
-                          "port": 20000},
+                          "port": PORT},
         "registry_config": "config://dnp3.csv",
         "driver_type": "dnp3",
-        "interval": 5,
+        "interval": 0.5,  # Note: interval affects scrape_all
         "timezone": "UTC",
         "heart_beat_point": "random_bool"
     }
@@ -197,22 +196,30 @@ def test_scrape_all_dryrun(vip_agent, configure_platform_driver):
     #                'BinaryOutput_index3': None}
 
 
-def test_get_point_dryrun(vip_agent, configure_platform_driver):
-    """
-        rpc call to "get_point" WITHOUT establishing connection to an outstation, no validation
+class TestRPCDryRun:
+    def test_get_point_dryrun(self, vip_agent, configure_platform_driver):
         """
-    res = vip_agent.vip.rpc.call(platform_driver_id, "get_point",
-                                 "campus/building/dnp3", "AnalogInput_index0").get(timeout=10)
-    logging_logger.info(f"=========== get_point {res}")  # expected None
+            rpc call to "get_point" WITHOUT establishing connection to an outstation, no validation
+            """
+        res = vip_agent.vip.rpc.call(platform_driver_id, "get_point",
+                                     "campus/building/dnp3", "AnalogInput_index0").get(timeout=10)
+        logging_logger.info(f"=========== get_point {res}")  # expected None
 
-
-def test_set_point_dryrun(vip_agent, configure_platform_driver):
-    """
-        rpc call to "set_point" WITH establishing connection to an outstation, no validation
+    def test_set_point_dryrun(self, vip_agent, configure_platform_driver):
         """
-    res = vip_agent.vip.rpc.call(platform_driver_id, "set_point",
-                                 "campus/building/dnp3", "AnalogOutput_index0", 0.1234).get(timeout=20)
-    logging_logger.info(f"=========== set_point {res}")  # expected None
+            rpc call to "set_point" WITH establishing connection to an outstation, no validation
+            """
+        res = vip_agent.vip.rpc.call(platform_driver_id, "set_point",
+                                     "campus/building/dnp3", "AnalogOutput_index0", 0.1234).get(timeout=20)
+        logging_logger.info(f"=========== set_point {res}")  # expected None
+
+    def test_set_point_dryrun_w_outstation(self, vip_agent, configure_platform_driver):
+        """
+            rpc call to "set_point" WITH establishing connection to an outstation, no validation
+            """
+        res = vip_agent.vip.rpc.call(platform_driver_id, "set_point",
+                                     "campus/building/dnp3", "AnalogOutput_index0", 0.1234).get(timeout=20)
+        logging_logger.info(f"=========== set_point {res}")  # expected None
 
 
 @pytest.fixture(
@@ -227,10 +234,10 @@ def outstation_app(request):
     # Note: allow parsing argument to fixture change port number using `request.param`
     # Note: verified that there is no port conflict during Github Action multi python version test, {{ matrix.python }}
     try:
-        port = request.param
+        port = int(request.param)
     except AttributeError:
-        port = 30000
-    outstation_appl = MyOutStationNew(port=port)  # Note: using default port 20000
+        port = PORT
+    outstation_appl = MyOutStationNew(port=port)  # Note: using default port 30000
     outstation_appl.start()
     # time.sleep(3)
     yield outstation_appl
@@ -238,10 +245,43 @@ def outstation_app(request):
     outstation_appl.shutdown()
 
 
-def test_set_point_dryrun_w_outstation(vip_agent, configure_platform_driver, outstation_app):
-    """
-        rpc call to "set_point" WITH establishing connection to an outstation, no validation
+@pytest.mark.parametrize('outstation_app', [20002, 20003], indirect=['outstation_app'])
+def test_master_appl_fixture(outstation_app):
+    outstation: MyOutStationNew = outstation_app
+    logging.info(f"============ outstation.port {outstation.get_config()}")
+
+
+class TestRPC:
+    @pytest.mark.parametrize('outstation_app', [PORT], indirect=['outstation_app'])
+    def test_get_point_w_outstation(self, vip_agent, configure_platform_driver, outstation_app):
         """
-    res = vip_agent.vip.rpc.call(platform_driver_id, "set_point",
-                                 "campus/building/dnp3", "AnalogOutput_index0", 0.1234).get(timeout=20)
-    logging_logger.info(f"=========== set_point {res}")  # expected 0.1234
+            rpc call to "set_point" WITH establishing connection to an outstation, no validation
+            """
+        val_update = random.random()
+
+        outstation_app.apply_update(opendnp3.Analog(value=val_update,
+                                                    flags=opendnp3.Flags(24),
+                                                    time=opendnp3.DNPTime(3094)),
+                                    index=0)
+        gevent.sleep(2)
+        res = vip_agent.vip.rpc.call(platform_driver_id, "get_point",
+                                     "campus/building/dnp3", "AnalogInput_index0").get(timeout=20)
+        logging_logger.info(f"=========== val_set: {val_update}, result get_point: {res}")
+        assert res == val_update
+
+
+    @pytest.mark.parametrize('outstation_app', [PORT], indirect=['outstation_app'])
+    def test_set_point_w_outstation(self, vip_agent, configure_platform_driver, outstation_app):
+        """
+            rpc call to "set_point" WITH establishing connection to an outstation, no validation
+            """
+        val_set = random.random()
+        res = vip_agent.vip.rpc.call(platform_driver_id, "set_point",
+                                     "campus/building/dnp3", "AnalogOutput_index0", val_set).get(timeout=20)
+        logging_logger.info(f"=========== val_set: {val_set}, result set_point: {res}")
+        gevent.sleep(2)
+        res = vip_agent.vip.rpc.call(platform_driver_id, "get_point",
+                                     "campus/building/dnp3", "AnalogInput_index0").get(timeout=20)
+        logging_logger.info(f"=========== val_set: {val_set}, result get_point: {res}")
+
+        assert res == val_set

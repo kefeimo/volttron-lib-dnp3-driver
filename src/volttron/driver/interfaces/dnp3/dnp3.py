@@ -59,7 +59,7 @@ class Dnp3Register(BaseRegister):
         self.reg_type = reg_type
         self.pointName = pointName
 
-        self._value = None
+        self._value = None  # use _value as cache
         self.group = int(reg_definition.get("Group"))
         self.variation = int(reg_definition.get("Variation"))
         self.index = int(reg_definition.get("Index"))
@@ -156,17 +156,18 @@ class Dnp3Driver(BasicRevert, BaseInterface):
             raise ValueError("Trying to write to a point configured read only: " + point_name)
         # register.value = register.reg_type(value)  # old logic to cast value to reg_type value (not robust)
         register.value = value
-        # Note: simple retry logic
-        # TODO: make retry attempt configurable
-        retry_max = 3
-        for n in range(retry_max):
-            if register.value == value:
-                return register.value
-            register.value = value
-            sleep(1)
-            # _log.info(f"Starting set_point {n}th RETRY for {point_name}")
-        _log.warning(f"Failed to set_point for {point_name} after {retry_max} retry.")
-        return None
+        return register.value
+        # # Note: simple retry logic
+        # # TODO: make retry attempt configurable
+        # retry_max = 3
+        # for n in range(retry_max):
+        #     if register._value == value:  # use _value as cache
+        #         return register.value
+        #     register.value = value  # otherwise, retry
+        #     sleep(1)
+        #     # _log.info(f"Starting set_point {n}th RETRY for {point_name}")
+        # _log.warning(f"Failed to set_point for {point_name} after {retry_max} retry.")
+        # return None
 
     def _scrape_all(self):
         result = {}

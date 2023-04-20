@@ -156,7 +156,7 @@ class Dnp3Driver(BasicRevert, BaseInterface):
             raise ValueError("Trying to write to a point configured read only: " + point_name)
         # register.value = register.reg_type(value)  # old logic to cast value to reg_type value (not robust)
         register.value = value
-        return register.value
+        return register._value
         # # Note: simple retry logic
         # # TODO: make retry attempt configurable
         # retry_max = 3

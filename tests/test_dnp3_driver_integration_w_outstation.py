@@ -13,7 +13,9 @@ from pydnp3 import opendnp3
 
 from dnp3_python.dnp3station.master_new import MyMasterNew
 from dnp3_python.dnp3station.outstation_new import MyOutStationNew
-PORT = 40000
+PORT = 50000
+PORT50001 = 50001
+PORT50002 = 50002
 
 import os
 
@@ -79,7 +81,7 @@ def master_app(request):
     time.sleep(1)
 
 
-@pytest.mark.parametrize('master_app', [40002, 40003], indirect=['master_app'])
+@pytest.mark.parametrize('master_app', [PORT50001, PORT50002], indirect=['master_app'])
 def test_master_appl_fixture(master_app):
     master: MyMasterNew = master_app
     logging.info(f"============ master.port {master.get_config()}")

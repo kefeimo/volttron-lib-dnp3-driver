@@ -28,6 +28,7 @@ DNP3_VIP_ID = "dnp3_outstation"
 PLATFORM_DRIVER_ID = PLATFORM_DRIVER
 PORT = 30000
 PORT40000 = 40000
+PORT40001 = 40001
 
 
 @pytest.fixture(scope="module")
@@ -183,7 +184,7 @@ def outstation_app(request):
     outstation_appl.shutdown()
 
 
-# @pytest.mark.skip(reason="Only for debugging purpose")
+@pytest.mark.skip(reason="Only for debugging purpose")
 class TestFixtures:
 
     def test_volttron_instance_fixture(self, volttron_instance):
@@ -305,86 +306,106 @@ def get_path_name(device_name: str):
 
 @pytest.mark.parametrize('outstation_app', [PORT40000], indirect=['outstation_app'])
 @pytest.mark.parametrize('configure_platform_driver', [PORT40000], indirect=['configure_platform_driver'])
-class TestRPC:
-
-    def test_get_point_w_outstation(self, vip_agent, configure_platform_driver, outstation_app):
+def test_get_point_set_point_w_outstation(vip_agent, configure_platform_driver, outstation_app):
+    """
+        rpc call to "get_point" "set_point" WITH establishing connection to an outstation, no validation
         """
-            rpc call to "set_point" WITH establishing connection to an outstation, no validation
-            """
-        port = PORT40000
-        # Make sure the connection is established
-        retry_max = 20
-        for n in range(retry_max):
-            if outstation_app.is_connected:
-                break
-            gevent.sleep(2)
-        # check configuration
-        try:
-            res = vip_agent.vip.rpc.call(CONFIGURATION_STORE, "manage_get",
-                                         PLATFORM_DRIVER_ID, get_device_name(port)).get(5)
-            logging_logger.info(f"=========== manage_get port {port}: {res}")
-        except BaseException as e:  # capture gevent timeout when using rpc call
-            logging_logger.exception(e, stack_info=True)
-            pass
+    # Note: Port can easily conflict, combine get_point and set_point for simplicity
+    port = PORT40000  # Note: this needs to match the @pytest.mark.parametrize('outstation_app'..)
+    # Make sure the connection is established
+    retry_max = 20
+    for n in range(retry_max):
+        if outstation_app.is_connected:
+            break
+        gevent.sleep(2)
+    # check configuration
+    try:
+        res = vip_agent.vip.rpc.call(CONFIGURATION_STORE, "manage_get",
+                                     PLATFORM_DRIVER_ID, get_device_name(port)).get(5)
+        logging_logger.info(f"=========== manage_get port {port}: {res}")
+    except BaseException as e:  # capture gevent timeout when using rpc call
+        logging_logger.exception(e, stack_info=True)
+        pass
 
-        # outstation update
-        val_update = random.random()
-        outstation_app.apply_update(opendnp3.Analog(value=val_update,
-                                                    flags=opendnp3.Flags(24),
-                                                    time=opendnp3.DNPTime(3094)),
-                                    index=0)
+    # get_point
+    # outstation update
+    val_update = random.random()
+    outstation_app.apply_update(opendnp3.Analog(value=val_update,
+                                                flags=opendnp3.Flags(24),
+                                                time=opendnp3.DNPTime(3094)),
+                                index=0)
+    gevent.sleep(5)
+    # Note: async method hence might be delayed, use retry for auto-testing
+    retry_max = 20
+    res = None
+    for n in range(retry_max):
+        try:
+            res = vip_agent.vip.rpc.call(PLATFORM_DRIVER_ID, "get_point",
+                                         get_path_name(get_device_name(port)),
+                                         "AnalogInput_index0").get(timeout=20)
+            logging_logger.info(f"=========== n: {n}, val_set: {val_update}, result get_point: {res}")
+        except BaseException as e:
+            print(e)
+        if res == val_update:
+            break
+        gevent.sleep(4)
+    assert res == val_update
+
+    # set_point
+    val_set = random.random()
+    retry_max = 20
+    res = None
+    for n in range(retry_max):
+        try:
+            res = vip_agent.vip.rpc.call(PLATFORM_DRIVER_ID, "set_point",
+                                         get_path_name(get_device_name(port)),
+                                         "AnalogOutput_index1", val_set).get(timeout=20)
+            logging_logger.info(f"=========== n: {n}, val_set: {val_set}, result set_point: {res}")
+        except BaseException as e:
+            print(e)
+        if res == val_set:
+            break
         gevent.sleep(5)
-        # Note: async method hence might be delayed, use retry for auto-testing
-        retry_max = 20
-        res = None
-        for n in range(retry_max):
-            try:
-                res = vip_agent.vip.rpc.call(PLATFORM_DRIVER_ID, "get_point",
-                                             get_path_name(get_device_name(port)),
-                                             "AnalogInput_index0").get(timeout=20)
-                logging_logger.info(f"=========== n: {n}, val_set: {val_update}, result get_point: {res}")
-            except BaseException as e:
-                print(e)
-            if res == val_update:
-                break
-            gevent.sleep(1)
-        assert res == val_update
+    assert res == val_set
 
-    def test_set_point_w_outstation(self, vip_agent, configure_platform_driver, outstation_app, install_platform_driver):
-        """
-            rpc call to "set_point" WITH establishing connection to an outstation, no validation
-            """
-        port = PORT40000
-        # Make sure the connection is established
-        retry_max = 20
-        for n in range(retry_max):
-            if outstation_app.is_connected:
-                break
-            gevent.sleep(2)
-        # check configuration
-        try:
-            res = vip_agent.vip.rpc.call(CONFIGURATION_STORE, "manage_get",
-                                         PLATFORM_DRIVER_ID, get_device_name(port)).get(5)
-            logging_logger.info(f"=========== manage_get port {port}: {res}")
-        except BaseException as e:  # capture gevent timeout when using rpc call
-            logging_logger.exception(e, stack_info=True)
-            pass
-
-        # Note: async method hence might be delayed, use retry for auto-testing
-        val_set = random.random()
-        retry_max = 20
-        res = None
-        for n in range(retry_max):
-            try:
-                res = vip_agent.vip.rpc.call(PLATFORM_DRIVER_ID, "set_point",
-                                             get_path_name(get_device_name(port)),
-                                             "AnalogOutput_index1", val_set).get(timeout=20)
-                logging_logger.info(f"=========== n: {n}, val_set: {val_set}, result set_point: {res}")
-            except BaseException as e:
-                print(e)
-            if res == val_set:
-                break
-            gevent.sleep(1)
-        assert res == val_set
+#
+# @pytest.mark.parametrize('outstation_app', [PORT40001], indirect=['outstation_app'])
+# @pytest.mark.parametrize('configure_platform_driver', [PORT40001], indirect=['configure_platform_driver'])
+# def test_set_point_w_outstation(vip_agent, configure_platform_driver, outstation_app, install_platform_driver):
+#     """
+#         rpc call to "set_point" WITH establishing connection to an outstation, no validation
+#         """
+#     port = PORT40001  # Note: this needs to match the @pytest.mark.parametrize('outstation_app'..)
+#     # Make sure the connection is established
+#     retry_max = 20
+#     for n in range(retry_max):
+#         if outstation_app.is_connected:
+#             break
+#         gevent.sleep(2)
+#     # check configuration
+#     try:
+#         res = vip_agent.vip.rpc.call(CONFIGURATION_STORE, "manage_get",
+#                                      PLATFORM_DRIVER_ID, get_device_name(port)).get(5)
+#         logging_logger.info(f"=========== manage_get port {port}: {res}")
+#     except BaseException as e:  # capture gevent timeout when using rpc call
+#         logging_logger.exception(e, stack_info=True)
+#         pass
+#
+#     # Note: async method hence might be delayed, use retry for auto-testing
+#     val_set = random.random()
+#     retry_max = 20
+#     res = None
+#     for n in range(retry_max):
+#         try:
+#             res = vip_agent.vip.rpc.call(PLATFORM_DRIVER_ID, "set_point",
+#                                          get_path_name(get_device_name(port)),
+#                                          "AnalogOutput_index1", val_set).get(timeout=20)
+#             logging_logger.info(f"=========== n: {n}, val_set: {val_set}, result set_point: {res}")
+#         except BaseException as e:
+#             print(e)
+#         if res == val_set:
+#             break
+#         gevent.sleep(5)
+#     assert res == val_set
 
 

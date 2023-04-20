@@ -368,44 +368,5 @@ def test_get_point_set_point_w_outstation(vip_agent, configure_platform_driver, 
         gevent.sleep(5)
     assert res == val_set
 
-#
-# @pytest.mark.parametrize('outstation_app', [PORT40001], indirect=['outstation_app'])
-# @pytest.mark.parametrize('configure_platform_driver', [PORT40001], indirect=['configure_platform_driver'])
-# def test_set_point_w_outstation(vip_agent, configure_platform_driver, outstation_app, install_platform_driver):
-#     """
-#         rpc call to "set_point" WITH establishing connection to an outstation, no validation
-#         """
-#     port = PORT40001  # Note: this needs to match the @pytest.mark.parametrize('outstation_app'..)
-#     # Make sure the connection is established
-#     retry_max = 20
-#     for n in range(retry_max):
-#         if outstation_app.is_connected:
-#             break
-#         gevent.sleep(2)
-#     # check configuration
-#     try:
-#         res = vip_agent.vip.rpc.call(CONFIGURATION_STORE, "manage_get",
-#                                      PLATFORM_DRIVER_ID, get_device_name(port)).get(5)
-#         logging_logger.info(f"=========== manage_get port {port}: {res}")
-#     except BaseException as e:  # capture gevent timeout when using rpc call
-#         logging_logger.exception(e, stack_info=True)
-#         pass
-#
-#     # Note: async method hence might be delayed, use retry for auto-testing
-#     val_set = random.random()
-#     retry_max = 20
-#     res = None
-#     for n in range(retry_max):
-#         try:
-#             res = vip_agent.vip.rpc.call(PLATFORM_DRIVER_ID, "set_point",
-#                                          get_path_name(get_device_name(port)),
-#                                          "AnalogOutput_index1", val_set).get(timeout=20)
-#             logging_logger.info(f"=========== n: {n}, val_set: {val_set}, result set_point: {res}")
-#         except BaseException as e:
-#             print(e)
-#         if res == val_set:
-#             break
-#         gevent.sleep(5)
-#     assert res == val_set
 
 
